@@ -2,6 +2,7 @@ import { createHash } from 'crypto';
 import type { Message, Plugin } from 'esbuild';
 import { createReadStream, promises as fsp } from 'fs';
 import type { ServerResponse } from 'http';
+import type { ServerOptions as SecureServerOptions } from 'https';
 import path from 'path';
 
 import { createLivereloadServer } from './server';
@@ -41,18 +42,23 @@ export interface LivereloadPluginOptions {
    * @default 53099
    */
   port?: number;
-  
+
   /**
    * Host that the livereload server will run on.
    *
    * @default 127.0.0.1
    */
   host?: string;
+
+  /**
+   * Https options
+   */
+  https?: SecureServerOptions;
 }
 
 export function livereloadPlugin(options: LivereloadPluginOptions = {}): Plugin {
-  const { port = 53099, host = '127.0.0.1' } = options;
-  const baseUrl = `http://${host}:${port}`;
+  const { port = 53099, host = '127.0.0.1', https } = options;
+  const baseUrl = `http${https ? 's' : ''}://${host}:${port}`;
 
   return {
     name: 'livereload-plugin',
@@ -61,7 +67,7 @@ export function livereloadPlugin(options: LivereloadPluginOptions = {}): Plugin 
       const bannerTemplate = await fsp.readFile(require.resolve('../banner.js'), 'utf-8');
       const banner = bannerTemplate.replace(/{baseUrl}/g, baseUrl);
 
-      createLivereloadServer({ basedir, host, port, onSSE: res => clients.add(res) });
+      createLivereloadServer({ basedir, host, port, onSSE: res => clients.add(res), https });
 
       build.initialOptions.banner ??= {};
       if (build.initialOptions.banner.js) {

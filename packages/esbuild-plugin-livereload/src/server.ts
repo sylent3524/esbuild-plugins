@@ -1,6 +1,8 @@
 import fs from 'fs';
-import type { Server, ServerResponse } from 'http';
+import type { RequestListener, Server, ServerResponse } from 'http';
 import { createServer } from 'http';
+import type { ServerOptions as SecureServerOptions } from 'https';
+import { createServer as createSecureServer } from 'https';
 import path from 'path';
 import { URL } from 'url';
 
@@ -11,12 +13,13 @@ interface ServerOptions {
   port: number;
   host: string;
   onSSE: (res: ServerResponse) => void;
+  https?: SecureServerOptions;
 }
 
 export function createLivereloadServer(options: ServerOptions): Server {
-  const { port, host, onSSE, basedir } = options;
+  const { port, host, onSSE, basedir, https } = options;
 
-  return createServer((req, res) => {
+  const requestListener: RequestListener = (req, res) => {
     if (!req.url) return;
     const url = new URL(req.url, `http://${host}:${port}`);
 
@@ -52,5 +55,10 @@ export function createLivereloadServer(options: ServerOptions): Server {
       }
       return;
     }
-  }).listen(port, host);
+  };
+
+  if (!https) {
+    return createServer(requestListener).listen(port, host);
+  }
+  return createSecureServer(https, requestListener).listen(port, host);
 }
